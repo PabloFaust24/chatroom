@@ -1,21 +1,26 @@
+// server.js
 const express = require('express');
-const app = express();
 const http = require('http');
-const server = http.createServer(app);
 const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public')); // your index.html and scripts are in /public
+// Serve static files from /public
+app.use(express.static(path.join(__dirname, 'public')));
 
+// WebSocket connections
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  console.log('A user connected');
 
   socket.on('chat message', (msg) => {
-    io.emit('chat message', msg);
+    io.emit('chat message', msg); // broadcast to all clients
   });
 
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    console.log('User disconnected');
   });
 });
 
