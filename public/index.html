@@ -644,24 +644,22 @@
         // When DOM is ready, initialize
         document.addEventListener('DOMContentLoaded', initialize);
     </script>
-    <script src="/socket.io/socket.io.js"></script>
+   <script src="/socket.io/socket.io.js"></script>
 <script>
-  // Connect to your Render server
-  const socket = io("https://chatproo.onrender.com");
+  const socket = io(); // auto-connects to the same server hosting index.html
 
-  // Send message
   document.getElementById('sendButton').addEventListener('click', () => {
     const input = document.getElementById('messageInput');
     socket.emit('chat message', input.value);
     input.value = '';
   });
 
-  // Receive message
   socket.on('chat message', (msg) => {
     const li = document.createElement('li');
     li.textContent = msg;
     document.getElementById('messages').appendChild(li);
   });
 </script>
+
 </body>
 </html>
