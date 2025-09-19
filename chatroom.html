@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ChatPro</title>
+    <style>
+        /* (kept your original styles intact) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+        .login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; background: rgba(0,0,0,0.2); }
+        .login-form {
+            background: rgba(255,255,255,0.95); padding: 40px; border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3); text-align: center; color: #333;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
+        }
+        .login-form h2 { margin-bottom: 30px; color: #2a5298; font-size: 28px; }
+        .login-form input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; transition: all 0.3s ease; }
+        .login-form input:focus { outline: none; border-color: #2a5298; box-shadow: 0 0 10px rgba(42,82,152,0.3); }
+        .login-form button { width: 100%; padding: 15px; background: linear-gradient(135deg,#2a5298,#1e3c72); color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
+        .login-form button:hover { transform: translateY(-2px); }
+
+        .chat-container { display: none; height: 100vh; flex-direction: column; }
+        .chat-header {
+            background: rgba(0,0,0,0.3); padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .chat-title { font-size: 24px; font-weight: bold; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .user-status { padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .status-active { background: #4CAF50; } .status-warned { background: #FF9800; } .status-muted { background: #F44336; } .status-banned { background: #9C27B0; }
+
+        .chat-main { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 250px; background: rgba(0,0,0,0.2); padding: 20px; border-right: 1px solid rgba(255,255,255,0.1); }
+        .sidebar h3 { margin-bottom: 15px; font-size: 18px; }
+        .users-list { list-style: none; max-height: 300px; overflow-y: auto; }
+        .users-list li { padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+        .admin-panel { margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .admin-controls { display: flex; flex-direction: column; gap: 10px; }
+        .admin-controls button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+        .warn-btn { background: #FF9800; color: white; } .mute-btn { background: #F44336; color: white; } .ban-btn { background: #9C27B0; color: white; } .clear-btn { background: #4CAF50; color: white; }
+
+        .chat-area { flex: 1; display: flex; flex-direction: column; }
+        .messages-container { flex: 1; padding: 20px; overflow-y: auto; background: rgba(255,255,255,0.05); }
+        .message { margin-bottom: 15px; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); border-left: 4px solid #2a5298; }
+        .message.system { background: rgba(255,193,7,0.2); border-left-color: #FFC107; font-style: italic; }
+        .message.warning { background: rgba(255,152,0,0.2); border-left-color: #FF9800; }
+        .message.filtered { background: rgba(244,67,54,0.2); border-left-color: #F44336; }
+
+        .message-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .username { font-weight: bold; color: #4CAF50; }
+        .timestamp { font-size: 12px; color: rgba(255,255,255,0.7); }
+        .message-content { color: rgba(255,255,255,0.9); line-height: 1.4; }
+
+        .input-area { padding: 20px; background: rgba(0,0,0,0.3); display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .message-input { flex: 1; padding: 15px; border: 2px solid rgba(255,255,255,0.2); border-radius: 25px; background: rgba(255,255,255,0.1); color: white; font-size: 16px; outline: none; backdrop-filter: blur(10px); }
+        .message-input::placeholder { color: rgba(255,255,255,0.6); }
+        .message-input:focus { border-color: #4CAF50; box-shadow: 0 0 15px rgba(76,175,80,0.3); }
+        .send-button { padding: 15px 25px; background: linear-gradient(135deg,#4CAF50,#45a049); color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; transition: all 0.2s; }
+        .send-button:hover { transform: scale(1.05); }
+        .send-button:disabled { background: #666; cursor: not-allowed; transform: none; }
+
+        .logs-panel { position: fixed; top: 20px; right: 20px; width: 300px; max-height: 400px; background: rgba(0,0,0,0.9); border-radius: 10px; padding: 15px; display: none; overflow-y: auto; z-index: 1000; }
+        .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .logs-header h3 { color: #FFC107; } .close-logs { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+        .log-entry { padding: 8px; margin: 5px 0; border-radius: 5px; font-size: 12px; }
+        .log-info { background: rgba(33,150,243,0.2); } .log-warning { background: rgba(255,152,0,0.2); } .log-error { background: rgba(244,67,54,0.2); }
+
+        .punishment-notice { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(244,67,54,0.95); padding: 30px; border-radius: 15px; text-align: center; z-index: 2000; display: none; backdrop-filter: blur(10px); border: 2px solid #F44336; }
+        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%,-50%) scale(0.8); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+        .punishment-notice.show { display: block; animation: fadeIn 0.3s ease; }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+        @media (max-width:768px) { .sidebar { width: 200px; } .logs-panel { width:250px; right:10px; top:10px; } }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-form">
+            <h2>ChatPro</h2>
+            <input type="text" id="usernameInput" placeholder="Enter your username" maxlength="20">
+            <input type="password" id="passwordInput" placeholder="Admin password (optional)">
+            <!-- removed inline onclick — using id and JS listener instead -->
+            <button id="joinBtn">Join Chat</button>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div id="chatContainer" class="chat-container">
+        <div class="chat-header">
+            <div class="chat-title">ChatPro</div>
+            <div class="user-info">
+                <span id="currentUser"></span>
+                <span id="userStatus" class="user-status status-active">Active</span>
+                <button id="logsToggleBtn" style="background: #FFC107; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">📊 Logs</button>
+                <button id="logoutBtn" style="background: #F44336; border: none; padding: 8px 15px; border-radius: 5px; color: white; cursor: pointer;">Logout</button>
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <div class="sidebar">
+                <h3>👥 Online Users (<span id="userCount">0</span>)</h3>
+                <ul id="usersList" class="users-list"></ul>
+
+                <div id="adminPanel" class="admin-panel hidden">
+                    <h3>⚡ Admin Controls</h3>
+                    <div class="admin-controls">
+                        <button id="warnBtn" class="warn-btn">⚠️ Warn User</button>
+                        <button id="muteBtn" class="mute-btn">🔇 Mute User</button>
+                        <button id="banBtn" class="ban-btn">🚫 Ban User</button>
+                        <button id="clearBtn" class="clear-btn">🧹 Clear Chat</button>
+                    </div>
+                    <input type="text" id="actionUsername" placeholder="Username" style="margin-top: 10px; padding: 8px; width: 100%; border-radius: 5px; border: 1px solid #ddd;">
+                    <!-- Admin import/export placeholders (only visible/used when isAdmin true) -->
+                    <div id="adminExtras" style="margin-top:10px;"></div>
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div id="messagesContainer" class="messages-container"></div>
+                <div class="input-area">
+                    <input type="text" id="messageInput" class="message-input" placeholder="Type your message..." maxlength="500">
+                    <button id="sendButton" class="send-button">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Panel -->
+    <div id="logsPanel" class="logs-panel">
+        <div class="logs-header">
+            <h3>📊 System Logs</h3>
+            <button class="close-logs" id="closeLogsBtn">×</button>
+        </div>
+        <div id="logsContent"></div>
+    </div>
+
+    <!-- Punishment Notice -->
+    <div id="punishmentNotice" class="punishment-notice">
+        <h3 id="punishmentTitle"></h3>
+        <p id="punishmentMessage"></p>
+        <button id="punishmentOkBtn" style="margin-top: 15px; padding: 10px 20px; background: white; color: #F44336; border: none; border-radius: 5px; cursor: pointer;">Understood</button>
+    </div>
+
+    <script>
+        // ========== Global state ==========
+        let currentUser = null;
+        let isAdmin = false;
+        let users = new Map();
+        let messages = [];
+        let logs = [];
+        let userPunishments = new Map(); // username -> {warnings, mutedUntil, banned}
+        let messageId = 0;
+
+        // Simulated database
+        const database = { users: [], messages: [], logs: [], punishments: [] };
+
+        // Profanity list
+        const profanityList = ['damn','hell','crap','stupid','idiot','moron','dumb','fool','bastard','bitch','ass','shit','fuck','bloody','piss'];
+
+        // Initialize punishment tracking for a user
+        function initializePunishments() {
+            if (!currentUser) return;
+            if (!userPunishments.has(currentUser)) {
+                userPunishments.set(currentUser, { warnings: 0, mutedUntil: 0, banned: false });
+            }
+        }
+
+        // Basic profanity replace
+        function filterProfanity(text) {
+            let filteredText = text;
+            let hasProfanity = false;
+            profanityList.forEach(word => {
+                const regex = new RegExp('\\b' + word + '\\b', 'gi');
+                if (regex.test(filteredText)) {
+                    hasProfanity = true;
+                    filteredText = filteredText.replace(regex, '*'.repeat(word.length));
+                }
+            });
+            return { filteredText, hasProfanity };
+        }
+
+        // Advanced profanity check (simple leet normalization)
+        function advancedProfanityCheck(text) {
+            const variations = { 'a':['@','4','a'], 'e':['3','e'], 'i':['1','!','i'], 'o':['0','o'], 's':[',','5','s'], 't':['7','t'] };
+            let normalizedText = text.toLowerCase();
+            Object.entries(variations).forEach(([letter, subs]) => {
+                subs.forEach(sub => {
+                    normalizedText = normalizedText.replace(new RegExp(sub, 'g'), letter);
+                });
+            });
+            return filterProfanity(normalizedText);
+        }
+
+        // Logging
+        function addLog(type, message, data = {}) {
+            const timestamp = new Date().toISOString();
+            const logEntry = { id: logs.length + 1, timestamp, type, message, data, user: currentUser || 'System' };
+            logs.push(logEntry);
+            database.logs.push(logEntry);
+            console.log(`[${type.toUpperCase()}] ${timestamp} - ${message}`, data);
+            updateLogsDisplay();
+        }
+
+        // ========== User actions: login/logout ==========
+        function login() {
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            if (!username) { alert('Please enter a username'); return; }
+            if (username.length < 2) { alert('Username must be at least 2 characters'); return; }
+
+            // Check banned state
+            const existingPunishment = userPunishments.get(username);
+            if (existingPunishment && existingPunishment.banned) {
+                showPunishmentNotice('Account Banned', 'Your account has been permanently banned from this chatroom.');
+                return;
+            }
+
+            currentUser = username;
+            isAdmin = password === 'admin123';
+
+            database.users.push({ username, isAdmin, joinedAt: new Date().toISOString(), lastActive: new Date().toISOString() });
+
+            initializePunishments();
+
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'flex';
+            document.getElementById('currentUser').textContent = username + (isAdmin ? ' (Admin)' : '');
+
+            if (isAdmin) {
+                document.getElementById('adminPanel').classList.remove('hidden');
+                populateAdminExtras();
+            }
+
+            addUser(username, isAdmin);
+            addSystemMessage(`${username} joined the chat${isAdmin ? ' as admin' : ''}`);
+            addLog('info', 'User joined chat', { username, isAdmin });
+
+            document.getElementById('messageInput').focus();
+            updateUserStatus(username);
+        }
+
+        function logout() {
+            if (currentUser) {
+                addSystemMessage(`${currentUser} left the chat`);
+                addLog('info', 'User left chat', { username: currentUser });
+                removeUser(currentUser);
+            }
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('passwordInput').value = '';
+            currentUser = null;
+            isAdmin = false;
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+
+        // ========== Users list management ==========
+        function addUser(username, admin = false) {
+            users.set(username, { admin, online: true });
+            updateUsersList();
+        }
+
+        function removeUser(username) {
+            users.delete(username);
+            updateUsersList();
+        }
+
+        function updateUsersList() {
+            const usersList = document.getElementById('usersList');
+            const userCount = document.getElementById('userCount');
+            usersList.innerHTML = '';
+            userCount.textContent = users.size;
+            users.forEach((userData, username) => {
+                const li = document.createElement('li');
+                const punishment = userPunishments.get(username) || { warnings: 0, mutedUntil: 0, banned: false };
+                let statusIcon = '🟢';
+                if (punishment.banned) statusIcon = '🔴';
+                else if (punishment.mutedUntil > Date.now()) statusIcon = '🟡';
+                else if (punishment.warnings > 0) statusIcon = '🟠';
+                li.innerHTML = `<span>${statusIcon} ${username}${userData.admin ? ' 👑' : ''}</span><span style="font-size:11px;color:rgba(255,255,255,0.6);">W:${punishment.warnings}</span>`;
+                usersList.appendChild(li);
+            });
+        }
+
+        // ========== Messages ==========
+        function addMessage(messageObj) {
+            const container = document.getElementById('messagesContainer');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message${messageObj.filtered ? ' filtered' : ''}`;
+            const timestamp = new Date(messageObj.timestamp).toLocaleTimeString();
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <span class="username">${messageObj.username}${messageObj.isAdmin ? ' 👑' : ''}</span>
+                    <span class="timestamp">${timestamp}</span>
+                </div>
+                <div class="message-content">
+                    ${messageObj.content}
+                    ${messageObj.filtered ? ' <em style="color: #FF9800;">(Content filtered)</em>' : ''}
+                </div>
+            `;
+            container.appendChild(messageEl);
+            container.scrollTop = container.scrollHeight;
+
+            if (container.children.length > 100) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function addSystemMessage(content) {
+            const container = document.getElementById('messagesContainer');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message system';
+            const timestamp = new Date().toLocaleTimeString();
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <span class="username">🤖 System</span>
+                    <span class="timestamp">${timestamp}</span>
+                </div>
+                <div class="message-content">${content}</div>
+            `;
+            container.appendChild(messageEl);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ========== Punishments ==========
+        function applyWarning(username, reason) {
+            if (!userPunishments.has(username)) userPunishments.set(username, { warnings: 0, mutedUntil: 0, banned: false });
+            const punishment = userPunishments.get(username);
+            punishment.warnings++;
+            addLog('warning', `Warning applied to ${username}`, { reason, warningCount: punishment.warnings });
+            if (username === currentUser) showPunishmentNotice('Warning Received', `You have been warned for: ${reason}. Warning count: ${punishment.warnings}/3`);
+            if (punishment.warnings >= 3 && punishment.warnings < 5) applyMute(username, 5);
+            else if (punishment.warnings >= 5) applyBan(username);
+            updateUserStatus(username);
+            updateUsersList();
+        }
+
+        function applyMute(username, minutes) {
+            if (!userPunishments.has(username)) userPunishments.set(username, { warnings: 0, mutedUntil: 0, banned: false });
+            const punishment = userPunishments.get(username);
+            punishment.mutedUntil = Date.now() + (minutes * 60 * 1000);
+            addLog('warning', `User muted for ${minutes} minutes`, { username });
+            addSystemMessage(`${username} has been muted for ${minutes} minute(s)`);
+            if (username === currentUser) showPunishmentNotice('You have been muted', `You cannot send messages for ${minutes} minute(s).`);
+            updateUserStatus(username);
+            updateUsersList();
+        }
+
+        function applyBan(username) {
+            if (!userPunishments.has(username)) userPunishments.set(username, { warnings: 0, mutedUntil: 0, banned: false });
+            const punishment = userPunishments.get(username);
+            punishment.banned = true;
+            addLog('error', `User banned`, { username });
+            addSystemMessage(`${username} has been banned from the chatroom`);
+            if (username === currentUser) {
+                showPunishmentNotice('You have been banned', 'Your account has been permanently banned from this chatroom.');
+                setTimeout(() => logout(), 3000);
+            }
+            updateUserStatus(username);
+            updateUsersList();
+        }
+
+        function updateUserStatus(username) {
+            if (username !== currentUser) return;
+            const punishment = userPunishments.get(username) || { warnings: 0, mutedUntil: 0, banned: false };
+            const statusEl = document.getElementById('userStatus');
+            if (punishment.banned) { statusEl.textContent = 'Banned'; statusEl.className = 'user-status status-banned'; }
+            else if (punishment.mutedUntil > Date.now()) { statusEl.textContent = 'Muted'; statusEl.className = 'user-status status-muted'; }
+            else if (punishment.warnings > 0) { statusEl.textContent = 'Warned'; statusEl.className = 'user-status status-warned'; }
+            else { statusEl.textContent = 'Active'; statusEl.className = 'user-status status-active'; }
+        }
+
+        // ========== Rate limiting ==========
+        const rateLimiter = new Map();
+        function checkRateLimit(username) {
+            const now = Date.now();
+            const limit = rateLimiter.get(username) || { count: 0, resetTime: now + 60000 };
+            if (now > limit.resetTime) { limit.count = 1; limit.resetTime = now + 60000; } else { limit.count++; }
+            rateLimiter.set(username, limit);
+            if (limit.count > 10) { applyWarning(username, 'Message rate limit exceeded'); return false; }
+            return true;
+        }
+
+        // ========== Enhanced send message (single implementation) ==========
+        function sendMessageImpl() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            if (!checkRateLimit(currentUser)) { showPunishmentNotice('Rate Limited', 'You are sending messages too quickly. Please slow down.'); return; }
+
+            const punishment = userPunishments.get(currentUser);
+            if (punishment && punishment.mutedUntil > Date.now()) {
+                const remainingTime = Math.ceil((punishment.mutedUntil - Date.now()) / 60000);
+                showPunishmentNotice('You are muted', `You cannot send messages for ${remainingTime} more minute(s).`);
+                return;
+            }
+
+            const { filteredText, hasProfanity } = advancedProfanityCheck(message);
+            if (hasProfanity) {
+                addLog('warning', 'Profanity detected and filtered', { original: message, filtered: filteredText, user: currentUser });
+                applyWarning(currentUser, 'Profanity detected');
+            }
+
+            const recentMessages = messages.slice(-5).filter(m => m.username === currentUser);
+            const spamCount = recentMessages.filter(m => m.content === filteredText).length;
+            if (spamCount >= 2) {
+                applyWarning(currentUser, 'Spam detected');
+                addLog('warning', 'Spam detected', { user: currentUser, message: filteredText });
+            }
+
+            const messageObj = { id: ++messageId, username: currentUser, content: filteredText, timestamp: new Date().toISOString(), filtered: hasProfanity, isAdmin };
+            messages.push(messageObj);
+            database.messages.push(messageObj);
+            addMessage(messageObj);
+            input.value = '';
+            addLog('info', 'Message sent', { messageId, hasProfanity, rateLimitCount: rateLimiter.get(currentUser).count });
+        }
+
+        // Wrap with cooldown to prevent rapid clicks
+        let sendCooldown = false;
+        const originalSendMessage = sendMessageImpl;
+        function sendMessage() {
+            if (sendCooldown) return;
+            sendCooldown = true;
+            setTimeout(() => sendCooldown = false, 500);
+            originalSendMessage();
+        }
+
+        // ========== Keyword monitoring ==========
+        const monitoredKeywords = ['admin', 'moderator', 'help', 'report', 'abuse'];
+        function checkKeywords(message) {
+            const lowerMessage = message.toLowerCase();
+            return monitoredKeywords.some(keyword => lowerMessage.includes(keyword));
+        }
+
+        // ========== Auto-save ==========
+        function autoSave() {
+            const state = {
+                users: Object.fromEntries(users),
+                messages: messages.slice(-100),
+                punishments: Object.fromEntries(userPunishments),
+                logs: logs.slice(-200)
+            };
+            localStorage.setItem('chatroomState', JSON.stringify(state));
+            addLog('info', 'Auto-save completed', { messageCount: messages.length, userCount: users.size });
+        }
+
+        // ========== Logs UI ==========
+        function updateLogsDisplay() {
+            const content = document.getElementById('logsContent');
+            content.innerHTML = '';
+            logs.slice(-50).reverse().forEach(log => {
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${log.type}`;
+                const time = new Date(log.timestamp).toLocaleTimeString();
+                entry.innerHTML = `
+                    <div style="font-weight:bold;">[${time}] ${log.user || 'System'}</div>
+                    <div>${log.message}</div>
+                    ${log.data && Object.keys(log.data).length > 0 ? `<div style="font-size:10px;margin-top:5px;opacity:0.8;">${JSON.stringify(log.data)}</div>` : ''}
+                `;
+                content.appendChild(entry);
+            });
+        }
+
+        function toggleLogs() {
+            const panel = document.getElementById('logsPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            if (panel.style.display === 'block') updateLogsDisplay();
+        }
+
+        // ========== Punishment notices UI ==========
+        function showPunishmentNotice(title, message) {
+            const notice = document.getElementById('punishmentNotice');
+            document.getElementById('punishmentTitle').textContent = title;
+            document.getElementById('punishmentMessage').textContent = message;
+            notice.classList.add('show');
+        }
+        function hidePunishmentNotice() { document.getElementById('punishmentNotice').classList.remove('show'); }
+
+        // Auto-unmute users when time expires
+        function checkMuteStatus() {
+            userPunishments.forEach((punishment, username) => {
+                if (punishment.mutedUntil > 0 && punishment.mutedUntil <= Date.now()) {
+                    punishment.mutedUntil = 0;
+                    addLog('info', `User ${username} automatically unmuted`);
+                    if (username === currentUser) { updateUserStatus(username); addSystemMessage('You have been unmuted'); }
+                    updateUsersList();
+                }
+            });
+        }
+
+        // Database export/import
+        function exportDatabase() {
+            const data = { timestamp: new Date().toISOString(), database, punishments: Object.fromEntries(userPunishments), logs };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chatroom_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog('info', 'Database exported');
+        }
+
+        function importDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    Object.assign(database, data.database || {});
+                    userPunishments.clear();
+                    Object.entries(data.punishments || {}).forEach(([username, punishment]) => userPunishments.set(username, punishment));
+                    logs.splice(0, logs.length, ...(data.logs || []));
+                    addLog('info', 'Database imported successfully');
+                    updateLogsDisplay();
+                    updateUsersList();
+                } catch (error) {
+                    addLog('error', 'Failed to import database', { error: error.message });
+                    alert('Failed to import database file');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ========== Admin functions (buttons) ==========
+        function showUserAction(action, promptValue = null) {
+            if (!isAdmin) return;
+            const username = document.getElementById('actionUsername').value.trim();
+            if (!username) { alert('Please enter a username'); return; }
+            if (!users.has(username)) { alert('User not found'); return; }
+            switch(action) {
+                case 'warn': applyWarning(username, 'Manual warning by admin'); break;
+                case 'mute': {
+                    const minutes = promptValue !== null ? promptValue : prompt('Mute duration in minutes:', '10');
+                    if (minutes && !isNaN(minutes)) applyMute(username, parseInt(minutes));
+                } break;
+                case 'ban': if (confirm(`Are you sure you want to ban ${username}?`)) applyBan(username); break;
+            }
+            document.getElementById('actionUsername').value = '';
+        }
+
+        function clearMessages() {
+            if (!isAdmin) return;
+            if (confirm('Clear all messages?')) {
+                document.getElementById('messagesContainer').innerHTML = '';
+                messages = [];
+                addLog('info', 'Chat cleared by admin');
+                addSystemMessage('Chat has been cleared by an administrator');
+            }
+        }
+
+        // Helper to create admin export/import controls when admin logs in
+        function populateAdminExtras() {
+            const container = document.getElementById('adminExtras');
+            container.innerHTML = '';
+
+            const exportBtn = document.createElement('button');
+            exportBtn.textContent = '📥 Export Data';
+            exportBtn.style = 'margin-top:10px;padding:8px 12px;background:#2196F3;color:white;border:none;border-radius:5px;cursor:pointer;width:100%;';
+            exportBtn.onclick = exportDatabase;
+
+            const importInput = document.createElement('input');
+            importInput.type = 'file';
+            importInput.accept = '.json';
+            importInput.style = 'margin-top:5px;width:100%;';
+            importInput.onchange = importDatabase;
+
+            container.appendChild(exportBtn);
+            container.appendChild(importInput);
+        }
+
+        // Connection simulation
+        let connectionStatus = 'connected';
+        function simulateConnection() {
+            if (Math.random() < 0.02) {
+                connectionStatus = 'disconnected';
+                addSystemMessage('⚠️ Connection lost. Attempting to reconnect...');
+                addLog('warning', 'Connection lost');
+                setTimeout(() => {
+                    connectionStatus = 'connected';
+                    addSystemMessage('✅ Connection restored');
+                    addLog('info', 'Connection restored');
+                }, 3000 + Math.random() * 5000);
+            }
+        }
+
+        // ========== Initialization ==========
+        function initialize() {
+            // Attach UI event listeners (safer than inline attributes)
+            document.getElementById('joinBtn').addEventListener('click', login);
+            document.getElementById('logsToggleBtn').addEventListener('click', toggleLogs);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('closeLogsBtn').addEventListener('click', toggleLogs);
+            document.getElementById('punishmentOkBtn').addEventListener('click', hidePunishmentNotice);
+
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+
+            // Admin buttons
+            document.getElementById('warnBtn').addEventListener('click', () => showUserAction('warn'));
+            document.getElementById('muteBtn').addEventListener('click', () => {
+                if (!isAdmin) return;
+                const minutes = prompt('Mute duration in minutes:', '10');
+                if (minutes && !isNaN(minutes)) showUserAction('mute', minutes);
+            });
+            document.getElementById('banBtn').addEventListener('click', () => {
+                if (!isAdmin) return;
+                if (confirm('Are you sure you want to ban the specified user?')) showUserAction('ban');
+            });
+            document.getElementById('clearBtn').addEventListener('click', clearMessages);
+
+            // Auto-save every 5 minutes
+            setInterval(autoSave, 5 * 60 * 1000);
+            // Check mute status every minute
+            setInterval(checkMuteStatus, 60 * 1000);
+            // Connection simulation
+            setInterval(simulateConnection, 30000);
+            // Cleanup rateLimiter old entries
+            setInterval(() => {
+                const now = Date.now();
+                rateLimiter.forEach((limit, username) => {
+                    if (now > limit.resetTime + 300000) rateLimiter.delete(username);
+                });
+            }, 5 * 60 * 1000);
+
+            addLog('info', 'Chatroom system initialized');
+        }
+
+        // When DOM is ready, initialize
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>
