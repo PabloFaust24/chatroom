@@ -1,27 +1,26 @@
 const express = require('express');
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server);
 
-// Serve static files from "public" folder
-app.use(express.static('public'));
+app.use(express.static('public')); // your index.html and scripts are in /public
 
-// Socket.io
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  console.log('a user connected');
 
   socket.on('chat message', (msg) => {
     io.emit('chat message', msg);
   });
 
   socket.on('disconnect', () => {
-    console.log('A user disconnected');
+    console.log('user disconnected');
   });
 });
 
-// Listen
+// Use Render's port or fallback to 3000 locally
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
